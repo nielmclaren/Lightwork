@@ -28,6 +28,13 @@ import processing.video.*;
 import gab.opencv.*;
 import java.awt.Rectangle;
 
+
+import com.thomasdiewald.ps3eye.PS3EyeP5;
+
+
+PS3EyeP5 ps3eye;
+
+
 Capture cam;
 Capture cam2;
 OpenCV opencv;
@@ -122,7 +129,20 @@ void setup()
 
   // Blobs list
   blobList = new ArrayList<Blob>();
-  cam = new Capture(this, camWidth, camHeight, 30);
+  ps3eye = PS3EyeP5.getDevice(this);
+  
+  if(ps3eye == null){
+    System.out.println("No PS3Eye connected. Good Bye!");
+    exit();
+    return;
+  } 
+  
+  // start capturing with 60 fps (default)
+  ps3eye.start();
+
+  // if "false" Processing/PS3Eye frameRates are not "synchronized".
+  // default value is "true".
+  ps3eye.waitAvailable(false); 
 
   // Network
   println("setting up network Interface");
@@ -206,17 +226,15 @@ void draw() {
 
   // Video Input Assignment (Camera or Image Sequence)
   // Read the video input (webcam or videofile)
-  if (videoMode == VideoMode.CAMERA && cam!=null ) { 
-    cam.read();
-    videoInput = cam;
-  } else if (videoMode == VideoMode.IMAGE_SEQUENCE && cam.available()) {
+  if (videoMode == VideoMode.CAMERA && ps3eye!=null ) { 
+    videoInput = ps3eye.getFrame();
+  } else if (videoMode == VideoMode.IMAGE_SEQUENCE && ps3eye.isAvailable()) {
 
     // Capture sequence if it doesn't exist
     if (images.size() < numFrames) {
-      cam.read();
       PGraphics pg = createGraphics(640, 480, P2D);
       pg.beginDraw();
-      pg.image(cam, 0, 0);
+      pg.image(ps3eye.getFrame(), 0, 0);
       pg.endDraw();
       captureTimer++;
       if (captureTimer == animator.frameSkip/2) { // Capture halfway through animation frame
@@ -226,7 +244,8 @@ void draw() {
         captureTimer = 0;
       }
 
-      videoInput = cam;
+      videoInput = ps3eye.getFrame();
+
       //processCV(); // TODO: This causes the last bit of the sequence to not register resulting
                      //        in every other LED not being decoded (and detected) properly
     }
@@ -246,9 +265,8 @@ void draw() {
   }
 
   // Calibration mode, use this to tweak your parameters before mapping
-  else if (videoMode == VideoMode.CALIBRATION && cam.available()) {
-    cam.read(); 
-    videoInput = cam; 
+  else if (videoMode == VideoMode.CALIBRATION && ps3eye.isAvailable()) {
+    videoInput = ps3eye.getFrame();
     // Background diff
     processCV();
   }
@@ -609,6 +627,7 @@ void saveCSV(ArrayList <LED> ledArray, String path) {
 void stop()
 {
   cam =null;
+  ps3eye=null;
   super.stop();
 }
 
@@ -616,5 +635,6 @@ void stop()
 void exit()
 {
   cam =null;
+  ps3eye=null;
   super.exit();
 }
